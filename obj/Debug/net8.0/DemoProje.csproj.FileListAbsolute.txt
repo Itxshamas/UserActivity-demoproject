@@ -168,3 +168,5 @@ C:\Users\triplek\Desktop\DemoPro\DemoProje\obj\Debug\net8.0\DemoProje.pdb
 C:\Users\triplek\Desktop\DemoPro\DemoProje\obj\Debug\net8.0\DemoProje.genruntimeconfig.cache
 C:\Users\triplek\Desktop\DemoPro\DemoProje\obj\Debug\net8.0\ref\DemoProje.dll
 C:\Users\triplek\Desktop\DemoPro\DemoProje\bin\Debug\net8.0\BCrypt.Net-Next.dll
+C:\Users\triplek\Desktop\DemoPro\DemoProje\obj\Debug\net8.0\DemoProje.sourcelink.json
+C:\Users\triplek\Desktop\DemoPro\DemoProje\bin\Debug\net8.0\Microsoft.AspNetCore.Authentication.JwtBearer.dll
