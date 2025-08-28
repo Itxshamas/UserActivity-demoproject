@@ -4,14 +4,16 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using DemoProje.Repositories.Interface;
+using DemoProje.Repositories.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ================= DATABASE =================
+//  DATABASE 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ================= AUTHENTICATION (JWT) =================
+//  AUTHENTICATION (JWT) 
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -31,14 +33,18 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ================= AUTHORIZATION =================
+// configer repositories
+ builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+
+ 
+//  AUTHORIZATION 
 builder.Services.AddAuthorization();
 
-// ================= CONTROLLERS =================
+//  CONTROLLERS 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// ================= SWAGGER =================
+//  SWAGGER 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "DemoProje API", Version = "v1" });

@@ -31,10 +31,13 @@ namespace DemoProje.Controllers
 
             return Ok(new
             {
-                Message = $"Welcome User! This is your dashboard.",
-                UserId = user.Id,
-                Email = user.Email,
-                Role = role
+                Message = "Welcome User! This is your dashboard.",
+                UserInfo = new
+                {
+                    user.Id,
+                    user.Email,
+                    Role = role
+                }
             });
         }
 

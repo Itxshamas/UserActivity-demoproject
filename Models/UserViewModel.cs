@@ -1,6 +1,8 @@
+
+
 namespace DemoProje.Models
 {
-    public class Users
+    public class UserViewModel
     {
         public string Id { get; set; }
         public string FirstName { get; set; }
@@ -8,12 +10,7 @@ namespace DemoProje.Models
         public string Email { get; set; }
         public string Address { get; set; }
         public string MobileNum { get; set; }
-        public string RoleId { get; set; }
-        public string PasswordHash { get; set; }
-
-        public Roles Role { get; set; }
-        public List<Activities> Activities{ get; set; }
-
+        public string RoleName { get; set; }
  
     }
 }

@@ -23,7 +23,8 @@ namespace DemoProje.Controllers
             _config = config;
         }
 
-        // ================= SIGNUP =================
+        // SIGNUP
+        [AllowAnonymous]
         [HttpPost("signup")]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
@@ -32,14 +33,13 @@ namespace DemoProje.Controllers
             if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
                 return BadRequest("User already exists!");
 
-            // Ensure role exists
+            // Only allow Admin or User role
+            if (dto.Role != "Admin" && dto.Role != "User")
+                return BadRequest("Invalid role. Allowed roles: Admin, User");
+
             var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name == dto.Role);
             if (role == null)
-            {
-                role = new Roles { Id = Guid.NewGuid().ToString(), Name = dto.Role };
-                await _context.Roles.AddAsync(role);
-                await _context.SaveChangesAsync();
-            }
+                return BadRequest("Role not found in database. Please insert Admin/User roles first.");
 
             var user = new Users
             {
@@ -47,7 +47,7 @@ namespace DemoProje.Controllers
                 FirstName = dto.FirstName,
                 LastName = dto.LastName,
                 Email = dto.Email,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                PasswordHash = dto.Password, 
                 Address = dto.Address,
                 MobileNum = dto.MobileNum,
                 RoleId = role.Id
@@ -59,23 +59,25 @@ namespace DemoProje.Controllers
             return Ok(new { message = "User registered successfully", role = dto.Role });
         }
 
-        //  SIGNIN
+        // SIGNIN
+        [AllowAnonymous]
         [HttpPost("signin")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var user = await _context.Users.Include(u => u.Role)
-                                           .FirstOrDefaultAsync(u => u.Email == dto.Email);
-
-            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
+            var user = await _context.Users
+                            .Include(u => u.Role) // join with Roles table
+                            .FirstOrDefaultAsync(u => u.Email == dto.Email && u.PasswordHash == dto.Password);
+            if (user == null)
                 return Unauthorized("Invalid email or password");
 
+            // JWT Claims
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(ClaimTypes.Role, user.Role?.Name ?? "User")
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
+                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(ClaimTypes.Role, user.Role?.Name ?? "User") 
             };
 
             var key = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
@@ -89,18 +91,19 @@ namespace DemoProje.Controllers
                 issuer: _config["Jwt:Issuer"],
                 audience: _config["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(5),
+                expires: DateTime.UtcNow.AddMinutes(30),
                 signingCredentials: creds
             );
 
             return Ok(new
             {
-                token = new JwtSecurityTokenHandler().WriteToken(token),
-                expiration = token.ValidTo,
-                role = user.Role?.Name
+                Message = "Login successful",
+                Token = new JwtSecurityTokenHandler().WriteToken(token),
+                Expiration = token.ValidTo,
+                Role = user.Role?.Name ?? "User", 
+                UserId = user.Id,
+                Email = user.Email
             });
         }
-
-
     }
 }
