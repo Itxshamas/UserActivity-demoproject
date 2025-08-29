@@ -44,6 +44,8 @@ builder.Services.AddAuthentication(options =>
 // Configure repositories
 builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IActivityRepository, ActivityRepository>(); 
+
 
 // AUTHORIZATION 
 builder.Services.AddAuthorization();

@@ -1,9 +1,7 @@
-using DemoProje.Data;
-using DemoProje.Models;
 using DemoProje.Models.DTOs;
+using DemoProje.Repositories.Interface;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
@@ -13,104 +11,119 @@ namespace DemoProje.Controllers
     [Route("api/[controller]")]
     public class ActivityController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
-        public ActivityController(ApplicationDbContext context) => _context = context;
+        private readonly IActivityRepository _activityRepository;
+
+        public ActivityController(IActivityRepository activityRepository)
+        {
+            _activityRepository = activityRepository;
+        }
 
         // CREATE ACTIVITY (User Only) 
         [Authorize(Roles = "User")]
-        [HttpPost("create")]
+        [HttpPost("UserCreateActivity")]
         public async Task<IActionResult> Create([FromBody] ActivityDto dto)
         {
-            var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-
-            var activity = new Activities
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            
+            if (string.IsNullOrEmpty(userId))
             {
-                Id = Guid.NewGuid().ToString(),
-                Title = dto.Title,
-                ActivityDescription = dto.ActivityDescription,
-                ActivityPriority = dto.ActivityPriority,
-                UserId = userId,
-                CreatedAt = DateTime.UtcNow
-            };
+                return Unauthorized("User ID not found in token");
+            }
 
-            await _context.Activities.AddAsync(activity);
-            await _context.SaveChangesAsync();
-
+            var activity = await _activityRepository.UserCreateActivityAsync(dto, userId);
             return Ok(new { Message = "Activity created successfully", Activity = activity });
+        } 
+
+
+                [Authorize(Roles = "Admin")]
+        [HttpPost("AdminCreateActivity")]
+        public async Task<IActionResult> AdminCreateActivity([FromBody] AdminActivityCreateDto dto)
+{
+            try
+            {
+                var activity = await _activityRepository.AdminCreateActivityAsync(dto.Activity, dto.TargetUserId);
+                return Ok(new { 
+                    Message = "Activity created successfully for user", 
+                    Activity = activity 
+                });
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
-        // get my activities (User Only) 
+        // GET: Get my activities (User Only) 
         [Authorize(Roles = "User")]
-        [HttpGet("my")]
+        [HttpGet("UserActivities")]
         public async Task<IActionResult> MyActivities()
         {
-            var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
-            var activities = await _context.Activities
-                                           .Where(a => a.UserId == userId)
-                                           .ToListAsync();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var activities = await _activityRepository.UserGetActivitiesAsync(userId);
             return Ok(activities);
         }
 
-        // get all activities (Admin Only) 
+        // GET: Get single activity by ID 
+        [Authorize(Roles = "User,Admin")]
+        [HttpGet("GetActivityById")]
+        public async Task<IActionResult> GetActivity(string id)
+        {
+            // CHANGE THIS LINE
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var role = User.FindFirstValue(ClaimTypes.Role);
+
+            var activity = await _activityRepository.GetActivityByIdAsync(id, userId, role);
+            if (activity == null) return NotFound("Activity not found or access denied");
+
+            return Ok(activity);
+        }
+
+        // GET: Get all activities (Admin Only) 
         [Authorize(Roles = "Admin")]
-        [HttpGet("all")]
+        [HttpGet("AdminGetAllActivities")]
         public async Task<IActionResult> AllActivities()
         {
-            var activities = await _context.Activities.Include(a => a.User).ToListAsync();
+            var activities = await _activityRepository.AdminGetAllActivitiesAsync();
             return Ok(activities);
         }
 
-        // update activities (User/Admin) 
+        // UPDATE activities (User/Admin) 
         [Authorize(Roles = "User,Admin")]
-        [HttpPut("update/{id}")]
+        [HttpPut("UpdateActivities")]
         public async Task<IActionResult> Update(string id, [FromBody] ActivityDto dto)
         {
-            var activity = await _context.Activities.FindAsync(id);
-            if (activity == null) return NotFound("Activity not found");
-
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var role = User.FindFirstValue(ClaimTypes.Role);
-            var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
 
-            if (role == "User" && activity.UserId != userId)
-                return Forbid("You can only update your own activities");
-
-            activity.Title = dto.Title;
-            activity.ActivityDescription = dto.ActivityDescription;
-            activity.ActivityPriority = dto.ActivityPriority;
-            activity.UpdatedAt = DateTime.UtcNow;
-
-            _context.Activities.Update(activity);
-            await _context.SaveChangesAsync();
+            var activity = await _activityRepository.UpdateActivityAsync(id, dto, userId, role);
+            if (activity == null) return NotFound("Activity not found or access denied");
 
             return Ok(new { Message = "Activity updated successfully", Activity = activity });
         }
 
         // DELETE ACTIVITY (User/Admin) 
         [Authorize(Roles = "User,Admin")]
-        [HttpDelete("delete/{id}")]
+        [HttpDelete("DeleteActivities")]
         public async Task<IActionResult> Delete(string id)
         {
-            var activity = await _context.Activities.FindAsync(id);
-            if (activity == null) return NotFound("Activity not found");
-
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var role = User.FindFirstValue(ClaimTypes.Role);
-            var userId = User.FindFirstValue(JwtRegisteredClaimNames.Sub);
 
-            if (role == "User" && activity.UserId != userId)
-                return Forbid("You can only delete your own activities");
-
-            _context.Activities.Remove(activity);
-            await _context.SaveChangesAsync();
+            var deleted = await _activityRepository.DeleteActivityAsync(id, userId, role);
+            if (!deleted) return NotFound("Activity not found or access denied");
 
             return Ok(new { Message = "Activity deleted successfully" });
         }
-    }
 
-    // DTO for creating/updating activity
-    public class ActivityDto
-    {
-        public string Title { get; set; }
-        public string ActivityDescription { get; set; }
-        public string ActivityPriority { get; set; }
+
+
+        // Get activities by user 
+        [Authorize(Roles = "Admin")]
+        [HttpGet("GetUserActivities")]
+        public async Task<IActionResult> GetUserActivities(string userId)
+        {
+            var activities = await _activityRepository.GetUserActivitiesAsync(userId);
+            return Ok(activities);
+        }
     }
 }
