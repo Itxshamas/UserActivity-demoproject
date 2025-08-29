@@ -15,5 +15,7 @@ namespace DemoProje.Repositories.Interface
         Task<Users> CreateUserAsync(UserCreateDto dto);
         Task<Users> UpdateUserAsync(string id, UserUpdateDto dto);
         Task<bool> DeleteUserAsync(string id);
+        Task<Users> UpdateAdminSelfAsync(string id, AdminSelfUpdateDto dto);
+
     }
 }

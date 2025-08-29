@@ -34,6 +34,28 @@ namespace DemoProje.Repositories.Services
                 .ToListAsync();
         }
 
+        // Add this new method for admin self-update
+        public async Task<Users> UpdateAdminSelfAsync(string id, AdminSelfUpdateDto dto)
+        {
+            var admin = await _context.Users.FindAsync(id);
+            if (admin == null) return null;
+
+            // Only allow updating specific fields (not RoleId)
+            admin.FirstName = dto.FirstName;
+            admin.LastName = dto.LastName;
+            admin.Email = dto.Email;
+            admin.Address = dto.Address;
+            admin.MobileNum = dto.MobileNum;
+            
+            // Update password only if provided
+            if (!string.IsNullOrEmpty(dto.Password))
+                admin.PasswordHash = dto.Password;
+
+            _context.Users.Update(admin);
+            await _context.SaveChangesAsync();
+            return admin;
+        }
+
         public async Task<UserViewModel> GetUserByIdAsync(string id)
         {
             return await _context.Users
