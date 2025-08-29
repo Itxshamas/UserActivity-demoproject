@@ -1,3 +1,6 @@
+using System.Text.Json.Serialization;
+
+
 namespace DemoProje.Models
 {
     public class Users
@@ -11,9 +14,13 @@ namespace DemoProje.Models
         public string RoleId { get; set; }
         public string PasswordHash { get; set; }
 
-        public Roles Role { get; set; }
-        public List<Activities> Activities{ get; set; }
 
- 
+
+        [JsonIgnore] // Add this
+
+        public Roles Role { get; set; }
+        public List<Activities> Activities { get; set; }
+
+
     }
 }

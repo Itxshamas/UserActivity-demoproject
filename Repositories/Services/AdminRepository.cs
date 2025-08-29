@@ -15,16 +15,12 @@ namespace DemoProje.Repositories.Services
             _context = context;
         }
 
-
-
-
-        //All users 
+        // All users 
         public async Task<List<UserViewModel>> GetAllUsersAsync()
         {
             return await _context.Users
               .Include(u => u.Role)
                 .Where(u => u.Role.Name == "User")
-
                 .Select(u => new UserViewModel
                 {
                     Id = u.Id,
@@ -92,24 +88,33 @@ namespace DemoProje.Repositories.Services
                 .FirstOrDefaultAsync();
         }
 
-        // Keep original entities for create/update/delete
+        // Keep original entity return for create
         public async Task<Users> CreateUserAsync(UserCreateDto dto)
         {
-            var user = new Users
+            try
             {
-                Id = Guid.NewGuid().ToString(),
-                FirstName = dto.FirstName,
-                LastName = dto.LastName,
-                Email = dto.Email,
-                Address = dto.Address,
-                MobileNum = dto.MobileNum,
-                PasswordHash = dto.Password,
-                RoleId = dto.RoleId
-            };
+                var user = new Users
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    FirstName = dto.FirstName,
+                    LastName = dto.LastName,
+                    Email = dto.Email,
+                    Address = dto.Address,
+                    MobileNum = dto.MobileNum,
+                    PasswordHash = dto.Password,
+                    RoleId = dto.RoleId
+                };
 
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-            return user;
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                return user;
+            }
+            catch (Exception ex)
+            {
+                // log the inner exception details
+                throw new Exception(ex.InnerException?.Message ?? ex.Message, ex);
+            }
         }
 
         public async Task<Users> UpdateUserAsync(string id, UserUpdateDto dto)

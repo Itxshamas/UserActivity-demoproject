@@ -55,8 +55,16 @@ namespace DemoProje.Controllers
         {
             try
             {
-                var newUser = await this._repo.CreateUserAsync(dto);
-                return Ok(new { Message = "User created successfully", User = newUser });
+                var newUser = await _repo.CreateUserAsync(dto);
+                
+                // Return a simple response without the full entity
+                return Ok(new { 
+                    Message = "User created successfully", 
+                    UserId = newUser.Id,
+                    FirstName = newUser.FirstName,
+                    LastName = newUser.LastName,
+                    Email = newUser.Email
+                });
             }
             catch (Exception ex)
             {

@@ -16,7 +16,7 @@ namespace DemoProje.Controllers
         private readonly ApplicationDbContext _context;
         public ActivityController(ApplicationDbContext context) => _context = context;
 
-        //  CREATE ACTIVITY (User Only) 
+        // CREATE ACTIVITY (User Only) 
         [Authorize(Roles = "User")]
         [HttpPost("create")]
         public async Task<IActionResult> Create([FromBody] ActivityDto dto)
@@ -39,7 +39,7 @@ namespace DemoProje.Controllers
             return Ok(new { Message = "Activity created successfully", Activity = activity });
         }
 
-        //  get my activities (User Only) 
+        // get my activities (User Only) 
         [Authorize(Roles = "User")]
         [HttpGet("my")]
         public async Task<IActionResult> MyActivities()
@@ -51,7 +51,7 @@ namespace DemoProje.Controllers
             return Ok(activities);
         }
 
-        //  get all activities (Admin Only) 
+        // get all activities (Admin Only) 
         [Authorize(Roles = "Admin")]
         [HttpGet("all")]
         public async Task<IActionResult> AllActivities()
@@ -60,7 +60,7 @@ namespace DemoProje.Controllers
             return Ok(activities);
         }
 
-        //  update activities (User/Admin) 
+        // update activities (User/Admin) 
         [Authorize(Roles = "User,Admin")]
         [HttpPut("update/{id}")]
         public async Task<IActionResult> Update(string id, [FromBody] ActivityDto dto)
@@ -85,7 +85,7 @@ namespace DemoProje.Controllers
             return Ok(new { Message = "Activity updated successfully", Activity = activity });
         }
 
-        //  DELETE ACTIVITY (User/Admin) 
+        // DELETE ACTIVITY (User/Admin) 
         [Authorize(Roles = "User,Admin")]
         [HttpDelete("delete/{id}")]
         public async Task<IActionResult> Delete(string id)

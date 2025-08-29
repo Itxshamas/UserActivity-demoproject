@@ -17,4 +17,3 @@ namespace DemoProje.Repositories.Interface
         Task<bool> DeleteUserAsync(string id);
     }
 }
-

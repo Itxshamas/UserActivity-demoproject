@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 
 
 namespace DemoProje.Models
@@ -11,6 +12,9 @@ namespace DemoProje.Models
 
         public string ActivityPriority { get; set; }
         public string UserId { get; set; } 
+
+            [JsonIgnore] // Add this
+
         public Users User { get; set; }  
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }  // Optional field

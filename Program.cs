@@ -6,14 +6,22 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using DemoProje.Repositories.Interface;
 using DemoProje.Repositories.Services;
+using System.Text.Json.Serialization; // Add this
+using Microsoft.AspNetCore.Http.Json; // Add this for JsonOptions
 
 var builder = WebApplication.CreateBuilder(args);
 
-//  DATABASE 
+// DATABASE 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-//  AUTHENTICATION (JWT) 
+// Configure JSON options to handle circular references
+builder.Services.Configure<JsonOptions>(options =>
+{
+    options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+});
+
+// AUTHENTICATION (JWT) 
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -33,18 +41,18 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// configer repositories
- builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+// Configure repositories
+builder.Services.AddScoped<IAdminRepository, AdminRepository>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
 
- 
-//  AUTHORIZATION 
+// AUTHORIZATION 
 builder.Services.AddAuthorization();
 
-//  CONTROLLERS 
+// CONTROLLERS 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-//  SWAGGER 
+// SWAGGER 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "DemoProje API", Version = "v1" });
