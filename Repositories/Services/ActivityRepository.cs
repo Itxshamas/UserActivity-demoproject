@@ -18,19 +18,30 @@ namespace DemoProje.Repositories.Services
         // User: Create activity
         public async Task<Activities> UserCreateActivityAsync(ActivityDto dto, string userId)
         {
-            var activity = new Activities
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                Id = Guid.NewGuid().ToString(),
-                Title = dto.Title,
-                ActivityDescription = dto.ActivityDescription,
-                ActivityPriority = dto.ActivityPriority,
-                UserId = userId,
-                CreatedAt = DateTime.UtcNow
-            };
+                var activity = new Activities
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = dto.Title,
+                    ActivityDescription = dto.ActivityDescription,
+                    ActivityPriority = dto.ActivityPriority,
+                    UserId = userId,
+                    CreatedAt = DateTime.UtcNow
+                };
 
-            await _context.Activities.AddAsync(activity);
-            await _context.SaveChangesAsync();
-            return activity;
+                await _context.Activities.AddAsync(activity);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return activity;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception("Transaction Failed: " + (ex.InnerException?.Message ?? ex.Message), ex);
+            }
         }
 
         // User: Get user's activities
@@ -50,13 +61,11 @@ namespace DemoProje.Repositories.Services
                 .ToListAsync();
         }
 
-        // Get activity by ID with ownership check
         public async Task<ActivityResponseDto> GetActivityByIdAsync(string id, string userId, string role)
         {
             var activity = await _context.Activities.FindAsync(id);
             if (activity == null) return null;
 
-            // User can only access their own activities
             if (role == "User" && activity.UserId != userId)
                 return null;
 
@@ -71,68 +80,94 @@ namespace DemoProje.Repositories.Services
             };
         }
 
-
-   // Admin: Create activity for any user
+        // Admin: Create activity for any user
         public async Task<Activities> AdminCreateActivityAsync(ActivityDto dto, string targetUserId)
         {
-            // Verify the target user exists
-            var userExists = await _context.Users.AnyAsync(u => u.Id == targetUserId);
-            if (!userExists)
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                throw new Exception("Target user not found");
+                var userExists = await _context.Users.AnyAsync(u => u.Id == targetUserId);
+                if (!userExists)
+                    throw new Exception("Target user not found");
+
+                var activity = new Activities
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = dto.Title,
+                    ActivityDescription = dto.ActivityDescription,
+                    ActivityPriority = dto.ActivityPriority,
+                    UserId = targetUserId,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _context.Activities.AddAsync(activity);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return activity;
             }
-
-            var activity = new Activities
+            catch (Exception ex)
             {
-                Id = Guid.NewGuid().ToString(),
-                Title = dto.Title,
-                ActivityDescription = dto.ActivityDescription,
-                ActivityPriority = dto.ActivityPriority,
-                UserId = targetUserId,
-                CreatedAt = DateTime.UtcNow
-            };
+                await transaction.RollbackAsync();
+                throw new Exception("Transaction Failed: " + (ex.InnerException?.Message ?? ex.Message), ex);
+            }
+        }
 
-            await _context.Activities.AddAsync(activity);
-            await _context.SaveChangesAsync();
-            return activity;
-        } 
-
-        // Update activity with ownership check
+        // Update activity
         public async Task<Activities> UpdateActivityAsync(string id, ActivityDto dto, string userId, string role)
         {
-            var activity = await _context.Activities.FindAsync(id);
-            if (activity == null) return null;
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var activity = await _context.Activities.FindAsync(id);
+                if (activity == null) return null;
 
-            // User can only update their own activities
-            if (role == "User" && activity.UserId != userId)
-                return null;
+                if (role == "User" && activity.UserId != userId)
+                    return null;
 
-            activity.Title = dto.Title;
-            activity.ActivityDescription = dto.ActivityDescription;
-            activity.ActivityPriority = dto.ActivityPriority;
-            activity.UpdatedAt = DateTime.UtcNow;
+                activity.Title = dto.Title;
+                activity.ActivityDescription = dto.ActivityDescription;
+                activity.ActivityPriority = dto.ActivityPriority;
+                activity.UpdatedAt = DateTime.UtcNow;
 
-            _context.Activities.Update(activity);
-            await _context.SaveChangesAsync();
-            return activity;
+                _context.Activities.Update(activity);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return activity;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception("Transaction Failed: " + (ex.InnerException?.Message ?? ex.Message), ex);
+            }
         }
 
-        // Delete activity with ownership check
+        // Delete activity
         public async Task<bool> DeleteActivityAsync(string id, string userId, string role)
         {
-            var activity = await _context.Activities.FindAsync(id);
-            if (activity == null) return false;
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var activity = await _context.Activities.FindAsync(id);
+                if (activity == null) return false;
 
-            // User can only delete their own activities
-            if (role == "User" && activity.UserId != userId)
-                return false;
+                if (role == "User" && activity.UserId != userId)
+                    return false;
 
-            _context.Activities.Remove(activity);
-            await _context.SaveChangesAsync();
-            return true;
+                _context.Activities.Remove(activity);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
-        // Admin: Get all activities
         public async Task<List<ActivityAdminResponseDto>> AdminGetAllActivitiesAsync()
         {
             return await _context.Activities
@@ -151,7 +186,6 @@ namespace DemoProje.Repositories.Services
                 .ToListAsync();
         }
 
-        // Admin: Get activities by user ID
         public async Task<List<ActivityAdminResponseDto>> GetUserActivitiesAsync(string targetUserId)
         {
             return await _context.Activities

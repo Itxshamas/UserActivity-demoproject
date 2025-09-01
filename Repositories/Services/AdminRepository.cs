@@ -19,7 +19,7 @@ namespace DemoProje.Repositories.Services
         public async Task<List<UserViewModel>> GetAllUsersAsync()
         {
             return await _context.Users
-              .Include(u => u.Role)
+                .Include(u => u.Role)
                 .Where(u => u.Role.Name == "User")
                 .Select(u => new UserViewModel
                 {
@@ -37,23 +37,32 @@ namespace DemoProje.Repositories.Services
         // Add this new method for admin self-update
         public async Task<Users> UpdateAdminSelfAsync(string id, AdminSelfUpdateDto dto)
         {
-            var admin = await _context.Users.FindAsync(id);
-            if (admin == null) return null;
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var admin = await _context.Users.FindAsync(id);
+                if (admin == null) return null;
 
-            // Only allow updating specific fields (not RoleId)
-            admin.FirstName = dto.FirstName;
-            admin.LastName = dto.LastName;
-            admin.Email = dto.Email;
-            admin.Address = dto.Address;
-            admin.MobileNum = dto.MobileNum;
-            
-            // Update password only if provided
-            if (!string.IsNullOrEmpty(dto.Password))
-                admin.PasswordHash = dto.Password;
+                admin.FirstName = dto.FirstName;
+                admin.LastName = dto.LastName;
+                admin.Email = dto.Email;
+                admin.Address = dto.Address;
+                admin.MobileNum = dto.MobileNum;
 
-            _context.Users.Update(admin);
-            await _context.SaveChangesAsync();
-            return admin;
+                if (!string.IsNullOrEmpty(dto.Password))
+                    admin.PasswordHash = dto.Password;
+
+                _context.Users.Update(admin);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return admin;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception("Transaction Failed: " + (ex.InnerException?.Message ?? ex.Message), ex);
+            }
         }
 
         public async Task<UserViewModel> GetUserByIdAsync(string id)
@@ -110,9 +119,9 @@ namespace DemoProje.Repositories.Services
                 .FirstOrDefaultAsync();
         }
 
-        // Keep original entity return for create
         public async Task<Users> CreateUserAsync(UserCreateDto dto)
         {
+            using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
                 var user = new Users
@@ -130,40 +139,63 @@ namespace DemoProje.Repositories.Services
                 _context.Users.Add(user);
                 await _context.SaveChangesAsync();
 
+                await transaction.CommitAsync();
                 return user;
             }
             catch (Exception ex)
             {
-                // log the inner exception details
-                throw new Exception(ex.InnerException?.Message ?? ex.Message, ex);
+                await transaction.RollbackAsync();
+                throw new Exception("Transaction Failed: " + (ex.InnerException?.Message ?? ex.Message), ex);
             }
         }
 
         public async Task<Users> UpdateUserAsync(string id, UserUpdateDto dto)
         {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null) return null;
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var user = await _context.Users.FindAsync(id);
+                if (user == null) return null;
 
-            user.FirstName = dto.FirstName;
-            user.LastName = dto.LastName;
-            user.Email = dto.Email;
-            user.Address = dto.Address;
-            user.MobileNum = dto.MobileNum;
-            user.RoleId = dto.RoleId;
+                user.FirstName = dto.FirstName;
+                user.LastName = dto.LastName;
+                user.Email = dto.Email;
+                user.Address = dto.Address;
+                user.MobileNum = dto.MobileNum;
+                user.RoleId = dto.RoleId;
 
-            _context.Users.Update(user);
-            await _context.SaveChangesAsync();
-            return user;
+                _context.Users.Update(user);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return user;
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                throw new Exception("Transaction Failed: " + (ex.InnerException?.Message ?? ex.Message), ex);
+            }
         }
 
         public async Task<bool> DeleteUserAsync(string id)
         {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null) return false;
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
+            {
+                var user = await _context.Users.FindAsync(id);
+                if (user == null) return false;
 
-            _context.Users.Remove(user);
-            await _context.SaveChangesAsync();
-            return true;
+                _context.Users.Remove(user);
+                await _context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
     }
 }

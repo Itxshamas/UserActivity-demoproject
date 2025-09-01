@@ -1,17 +1,17 @@
 using DemoProje.Data;
+using DemoProje.Repositories.Interface;
+using DemoProje.Repositories.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using DemoProje.Repositories.Interface;
-using DemoProje.Repositories.Services;
-using System.Text.Json.Serialization; // Add this
-using Microsoft.AspNetCore.Http.Json; // Add this for JsonOptions
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Http.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// DATABASE 
+// Database
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -21,7 +21,7 @@ builder.Services.Configure<JsonOptions>(options =>
     options.SerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
 });
 
-// AUTHENTICATION (JWT) 
+// Authentication (JWT)
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -41,20 +41,19 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Configure repositories
+// Repositories
 builder.Services.AddScoped<IAdminRepository, AdminRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<IActivityRepository, ActivityRepository>(); 
+builder.Services.AddScoped<IActivityRepository, ActivityRepository>();
 
-
-// AUTHORIZATION 
+// Authorization
 builder.Services.AddAuthorization();
 
-// CONTROLLERS 
+// Controllers
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// SWAGGER 
+// Swagger
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "DemoProje API", Version = "v1" });
